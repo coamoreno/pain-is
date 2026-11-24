@@ -76,14 +76,18 @@ function recebeColheita(txt){
   CO={linhas:(d.linhas||[]).map(r=>({data:r[0],h:parseInt(String(r[1]).split(':')[0],10),uni:r[2],fr:String(r[3]||'').trim(),eq:String(r[4]||'').trim(),t:num(r[5])||0,cod:r[6],op:String(r[7]||'').toUpperCase().trim(),vel:num(r[8])})).filter(r=>r.fr&&r.eq&&isFinite(r.h)),
       tch:d.tch||{},l2:new Set((d.linhas2||[]).map(String)),aviso:d.tchAviso,tchLido:d.tchLido,lido:d.lido,faltam:d.faltam||[]};
   const hs=new Set(CO.linhas.map(r=>r.h)), ultH=ORDEM.filter(x=>hs.has(x)).pop();
-  $('sub').textContent='Colheita · último dado: '+(ultH==null?'-':String(ultH).padStart(2,'0')+'h')+' · conferido às '+new Date(d.lido||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const pv=d.previa&&d.previa.linhas?d.previa:null; CO.previa=pv;
+  if(pv) pv.linhas.forEach(r=>{ const [h,u,fr,eq,tot,cor,vt]=r; if(!fr||!eq) return; const base={h:+h,uni:u,fr:String(fr).trim(),eq:String(eq).trim(),prev:true};
+    if(cor>0) CO.linhas.push(Object.assign({},base,{t:+cor,op:'CORTE DE CANA',vel:vt/cor})); if(tot-cor>0) CO.linhas.push(Object.assign({},base,{t:tot-cor,op:'OUTRO',vel:NaN})); });
+  $('sub').textContent='Colheita · oficial até '+(ultH==null?'-':String(ultH).padStart(2,'0')+'h')+(pv&&pv.linhas.length?' · prévia (Monit) até '+pv.ate:'')+' · conferido às '+new Date(d.lido||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   desenhaColheita();
 }
 const tchDe=fr=>{ if(TCH_MAN[fr]>0) return {v:+TCH_MAN[fr],f:'manual'}; const x=CO.tch[fr]; if(x&&x.tch>0) return {v:x.tch,f:x.fonte,faz:x.faz}; return {v:+TCH_PADRAO,f:'padrão'}; };
 function calcula(linhas){
   // por colhedora e hora — mesma conta do Painel de Colheita: (corte ÷ tempo) × velocidade × TCH × espaçamento ÷ 10
-  const m={}; linhas.forEach(r=>{ const k=r.eq+'|'+r.h; const o=m[k]||(m[k]={eq:r.eq,h:r.h,fr:r.fr,uni:r.uni,tot:0,cor:0,vt:0}); o.tot+=r.t; if(r.op==='CORTE DE CANA'){ o.cor+=r.t; if(isFinite(r.vel)) o.vt+=r.vel*r.t; } });
-  return Object.values(m).map(o=>{ const esp=CO.l2.has(o.eq)?3:1.5, vel=o.cor?o.vt/o.cor:0, tch=tchDe(o.fr).v; return Object.assign(o,{esp,vel,tch,ton:o.tot?(o.cor/o.tot)*vel*tch*esp/10:0,ha:o.tot?(o.cor/o.tot)*vel*esp/10:0}); });
+  const m={}; linhas.forEach(r=>{ const k=r.eq+'|'+r.h; const o=m[k]||(m[k]={eq:r.eq,h:r.h,fr:r.fr,uni:r.uni,tot:0,cor:0,vt:0,prev:!!r.prev}); o.tot+=r.t; if(r.op==='CORTE DE CANA'){ o.cor+=r.t; if(isFinite(r.vel)) o.vt+=r.vel*r.t; } });
+  return Object.values(m).map(o=>{ const esp=CO.l2.has(o.eq)?3:1.5, vel=o.cor?o.vt/o.cor:0, tch=tchDe(o.fr).v; const ton=o.tot?(o.cor/o.tot)*vel*tch*esp/10:0; return Object.assign(o,{esp,vel,tch,ton,real:o.prev?o.cor*vel*tch*esp/10:ton,ha:o.prev?o.cor*vel*esp/10:(o.tot?(o.cor/o.tot)*vel*esp/10:0)}); });
+  // prévia (hora em andamento): ton = ritmo t/h; real = o que já foi colhido até agora
 }
 function grafico(pts,modo){   // pts:[{h,v}] na ordem do dia agrícola
   if(!pts.length) return '<div class="nota">Sem horas com corte.</div>';
@@ -96,10 +100,12 @@ function grafico(pts,modo){   // pts:[{h,v}] na ordem do dia agrícola
   HS.forEach((h,i)=>{ if(n>14&&W<600&&i%2) return; s+='<text x="'+X(i)+'" y="'+(y0+ch+16)+'" text-anchor="middle" font-size="11" fill="#5b6b62">'+String(h).padStart(2,'0')+'</text>'; });
   const P=pts.map(p=>[X(HS.indexOf(p.h)),Y(p.v),p]);
   s+='<path d="M'+P.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+' L'+P[P.length-1][0].toFixed(1)+' '+(y0+ch)+' L'+P[0][0].toFixed(1)+' '+(y0+ch)+'Z" fill="#2a78d6" opacity=".08"/>';
-  s+='<polyline points="'+P.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round"/>';
+  const Pof=P.filter(q=>!q[2].prev), Ppv=P.filter(q=>q[2].prev);
+  if(Pof.length>1) s+='<polyline points="'+Pof.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round"/>';
+  if(Ppv.length){ const lig=(Pof.length?[Pof[Pof.length-1]]:[]).concat(Ppv); if(lig.length>1) s+='<polyline points="'+lig.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#2a78d6" stroke-width="2" stroke-dasharray="5 4"/>'; }
   const imax=vals.indexOf(Math.max(...vals));
-  P.forEach(([x,y,p],i)=>{ s+='<g><circle cx="'+x+'" cy="'+y+'" r="5" fill="#2a78d6" stroke="#fff" stroke-width="2"/><circle cx="'+x+'" cy="'+y+'" r="16" fill="transparent"><title>'+String(p.h).padStart(2,'0')+'h · '+fmt(p.v)+(modo==='ac'?' t acumuladas':' t/h')+(p.n?' · '+p.n+' colhedoras':'')+'</title></circle>';
-    if(P.length<=(W<600?8:16)||i===imax||i===P.length-1) s+='<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0b0b0b">'+fmt(p.v)+'</text>'; s+='</g>'; });
+  P.forEach(([x,y,p],i)=>{ s+='<g><circle cx="'+x+'" cy="'+y+'" r="5" fill="'+(p.prev?'#fff':'#2a78d6')+'" stroke="'+(p.prev?'#2a78d6':'#fff')+'" stroke-width="2"/><circle cx="'+x+'" cy="'+y+'" r="16" fill="transparent"><title>'+String(p.h).padStart(2,'0')+'h · '+fmt(p.v)+(modo==='ac'?' t acumuladas':' t/h')+(p.n?' · '+p.n+' colhedoras':'')+(p.prev?' · PRÉVIA pelo Monit (hora em andamento)':'')+'</title></circle>';
+    if(P.length<=(W<600?8:16)||i===imax||i===P.length-1) s+='<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0b0b0b">'+fmt(p.v)+(p.prev?' (prévia)':'')+'</text>'; s+='</g>'; });
   return s+'</svg>';
 }
 function desenhaColheita(){
@@ -107,9 +113,9 @@ function desenhaColheita(){
   const base=L0.filter(r=>(!C_UNI||r.uni===C_UNI)&&!OCULTAS.has(r.fr)), frentes=[...new Set(base.map(r=>r.fr))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
   if(C_FR&&!frentes.includes(C_FR)) C_FR='';
   const sel=base.filter(r=>!C_FR||r.fr===C_FR), EH=calcula(sel);
-  const ton=EH.reduce((a,o)=>a+o.ton,0), cor=EH.reduce((a,o)=>a+o.cor,0), vt=EH.reduce((a,o)=>a+o.vel*o.cor,0), ha=EH.reduce((a,o)=>a+o.ha,0);
-  const porH={}; EH.forEach(o=>{ const p=porH[o.h]||(porH[o.h]={h:o.h,v:0,n:0}); p.v+=o.ton; if(o.cor>0) p.n++; });
-  const horas=ORDEM.filter(h=>porH[h]&&porH[h].v>0); let ac=0; const pts=horas.map(h=>({h,v:C_MODO==='ac'?(ac+=porH[h].v):porH[h].v,n:porH[h].n}));
+  const ton=EH.reduce((a,o)=>a+o.real,0), tonOf=EH.filter(o=>!o.prev).reduce((a,o)=>a+o.ton,0), cor=EH.reduce((a,o)=>a+o.cor,0), vt=EH.reduce((a,o)=>a+o.vel*o.cor,0), ha=EH.reduce((a,o)=>a+o.ha,0);
+  const porH={}; EH.forEach(o=>{ const p=porH[o.h]||(porH[o.h]={h:o.h,v:0,r:0,n:0,prev:false}); p.v+=o.ton; p.r+=o.real; if(o.prev) p.prev=true; if(o.cor>0) p.n++; });
+  const horas=ORDEM.filter(h=>porH[h]&&porH[h].v>0), horasOf=horas.filter(h=>!porH[h].prev); let ac=0; const pts=horas.map(h=>({h,v:C_MODO==='ac'?(ac+=porH[h].r):porH[h].v,n:porH[h].n,prev:porH[h].prev}));
   const nCol=new Set(EH.filter(o=>o.cor>0).map(o=>o.eq)).size, tchSel=C_FR?tchDe(C_FR):null;
   let h='';
   if(CO.faltam.length) h+='<div class="aviso">⚠ Faltam colunas na planilha "RPA - Variaveis Operacionais" — confira o cabeçalho.</div>';
@@ -117,20 +123,20 @@ function desenhaColheita(){
      '<select id="sel-fr"><option value="">Todas as frentes ('+frentes.length+')</option>'+frentes.map(f=>'<option'+(f===C_FR?' selected':'')+'>'+esc(f)+'</option>').join('')+'</select></div>';
   h+='<div class="kpis">'+
     '<div class="kpi" style="--c:#2a78d6"><b>Cana colocada (estimada)</b><div class="v">'+fmt(ton)+' t</div><small>'+fmt(ha,1)+' ha cortados</small></div>'+
-    '<div class="kpi" style="--c:#1baf7a"><b>Ritmo médio</b><div class="v">'+fmt(horas.length?ton/horas.length:NaN)+' t/h</div><small>média das '+horas.length+' horas com corte</small></div>'+
+    '<div class="kpi" style="--c:#1baf7a"><b>Ritmo médio</b><div class="v">'+fmt(horasOf.length?tonOf/horasOf.length:NaN)+' t/h</div><small>média das '+horasOf.length+' horas fechadas com corte</small></div>'+
     '<div class="kpi" style="--c:#6250d6"><b>Horas de corte</b><div class="v">'+fHM(cor)+'</div><small>'+nCol+' colhedoras cortando</small></div>'+
     '<div class="kpi" style="--c:#eda100"><b>Velocidade de corte</b><div class="v">'+fmt(cor?vt/cor:NaN,2)+' km/h</div><small>média ponderada pelo tempo</small></div>'+
     (tchSel?'<div class="kpi" style="--c:#e34948"><b>TCH usado</b><div class="v">'+fmt(tchSel.v,1)+'</div><small>'+tchSel.f+(tchSel.faz?' · '+esc(tchSel.faz.join(', ')):'')+'</small></div>':'')+
   '</div>';
-  h+='<div class="painel"><h3>'+(C_FR?esc(C_FR):(C_UNI||'Todas as unidades'))+' — cana colocada por hora <span class="sw"><span data-m="th" class="'+(C_MODO==='th'?'on':'')+'">t/h</span><span data-m="ac" class="'+(C_MODO==='ac'?'on':'')+'">acumulado</span></span></h3>'+grafico(pts,C_MODO)+'</div>';
+  h+='<div class="painel"><h3>'+(C_FR?esc(C_FR):(C_UNI||'Todas as unidades'))+' — cana colocada por hora'+(CO.previa&&CO.previa.linhas&&CO.previa.linhas.length?' <small>· ponto vazado = prévia da hora atual (Monit)</small>':'')+' <span class="sw"><span data-m="th" class="'+(C_MODO==='th'?'on':'')+'">t/h</span><span data-m="ac" class="'+(C_MODO==='ac'?'on':'')+'">acumulado</span></span></h3>'+grafico(pts,C_MODO)+'</div>';
   if(!C_FR){
-    const fr={}; calcula(base).forEach(o=>{ const f=fr[o.fr]||(fr[o.fr]={fr:o.fr,uni:o.uni,ton:0,cor:0,vt:0,eq:new Set(),hs:new Set()}); f.ton+=o.ton; f.cor+=o.cor; f.vt+=o.vel*o.cor; if(o.cor>0){ f.eq.add(o.eq); f.hs.add(o.h); } });
+    const fr={}; calcula(base).forEach(o=>{ const f=fr[o.fr]||(fr[o.fr]={fr:o.fr,uni:o.uni,ton:0,tonOf:0,cor:0,vt:0,eq:new Set(),hs:new Set()}); f.ton+=o.real; f.cor+=o.cor; f.vt+=o.vel*o.cor; if(o.cor>0){ f.eq.add(o.eq); if(!o.prev){ f.hs.add(o.h); f.tonOf+=o.ton; } } });
     const L=Object.values(fr).sort((a,b)=>b.ton-a.ton);
     h+='<div class="painel"><h3>Por frente <small>toque na linha para abrir · TCH: digite para corrigir (fica salvo neste aparelho)</small></h3><table><tr><th>Frente</th><th class="n esc">Colhed.</th><th class="n">Horas corte</th><th class="n esc">Vel. km/h</th><th class="n">TCH</th><th class="n">Cana (t)</th><th class="n">t/h</th><th></th></tr>'+
-      L.map(f=>{ const t=tchDe(f.fr); return '<tr class="cl" data-fr="'+esc(f.fr)+'"><td><b>'+esc(f.fr)+'</b> <small class="nota esc">'+esc(f.uni||'')+'</small></td><td class="n esc">'+f.eq.size+'</td><td class="n">'+fHM(f.cor)+'</td><td class="n esc">'+fmt(f.cor?f.vt/f.cor:NaN,2)+'</td><td class="n"><input type="number" step="0.1" data-tch="'+esc(f.fr)+'" value="'+(TCH_MAN[f.fr]||'')+'" placeholder="'+fmt(t.v,1)+'" title="'+t.f+'"> <span class="tag esc '+(t.f==='manual'?'m':t.f==='padrão'?'p':'')+'">'+t.f+'</span></td><td class="n"><b>'+fmt(f.ton)+'</b></td><td class="n">'+fmt(f.hs.size?f.ton/f.hs.size:NaN)+'</td><td><button class="rm" data-rm="'+esc(f.fr)+'" title="Remover esta frente do painel">✕</button></td></tr>'; }).join('')+'</table>'+
+      L.map(f=>{ const t=tchDe(f.fr); return '<tr class="cl" data-fr="'+esc(f.fr)+'"><td><b>'+esc(f.fr)+'</b> <small class="nota esc">'+esc(f.uni||'')+'</small></td><td class="n esc">'+f.eq.size+'</td><td class="n">'+fHM(f.cor)+'</td><td class="n esc">'+fmt(f.cor?f.vt/f.cor:NaN,2)+'</td><td class="n"><input type="number" step="0.1" data-tch="'+esc(f.fr)+'" value="'+(TCH_MAN[f.fr]||'')+'" placeholder="'+fmt(t.v,1)+'" title="'+t.f+'"> <span class="tag esc '+(t.f==='manual'?'m':t.f==='padrão'?'p':'')+'">'+t.f+'</span></td><td class="n"><b>'+fmt(f.ton)+'</b></td><td class="n">'+fmt(f.hs.size?f.tonOf/f.hs.size:NaN)+'</td><td><button class="rm" data-rm="'+esc(f.fr)+'" title="Remover esta frente do painel">✕</button></td></tr>'; }).join('')+'</table>'+
       (OCULTAS.size?'<div class="nota" style="margin-top:8px">Removidas ('+OCULTAS.size+'): '+[...OCULTAS].map(x=>'<span class="chip" data-volta="'+esc(x)+'" title="Tocar para voltar">↺ '+esc(x)+'</span>').join(' ')+'</div>':'')+'</div>';
   } else {
-    const eq={}; EH.forEach(o=>{ const e=eq[o.eq]||(eq[o.eq]={eq:o.eq,ton:0,cor:0,vt:0,tot:0,esp:o.esp}); e.ton+=o.ton; e.cor+=o.cor; e.vt+=o.vel*o.cor; e.tot+=o.tot; });
+    const eq={}; EH.forEach(o=>{ const e=eq[o.eq]||(eq[o.eq]={eq:o.eq,ton:0,cor:0,vt:0,tot:0,esp:o.esp}); e.ton+=o.real; e.cor+=o.cor; e.vt+=o.vel*o.cor; e.tot+=o.tot; });
     h+='<div class="painel"><h3>Colhedoras da '+esc(C_FR)+' <small>'+(tchSel&&tchSel.f!=='manual'?'TCH '+fmt(tchSel.v,1)+' ('+tchSel.f+')':'')+'</small></h3><table><tr><th>Colhedora</th><th class="n">Linhas</th><th class="n">Horas corte</th><th class="n">% corte</th><th class="n">Vel. km/h</th><th class="n">Cana (t)</th></tr>'+
       Object.values(eq).sort((a,b)=>b.ton-a.ton).map(e=>'<tr><td><b>'+esc(e.eq)+'</b></td><td class="n">'+(e.esp===3?'2':'1')+'</td><td class="n">'+fHM(e.cor)+'</td><td class="n">'+fmt(e.tot?e.cor/e.tot*100:NaN)+'%</td><td class="n">'+fmt(e.cor?e.vt/e.cor:NaN,2)+'</td><td class="n"><b>'+fmt(e.ton)+'</b></td></tr>').join('')+'</table></div>';
   }
