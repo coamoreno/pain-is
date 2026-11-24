@@ -36,6 +36,7 @@ td input{width:64px;font-size:13px;padding:3px 5px;border:1px solid var(--lin);b
 #login{position:fixed;inset:0;background:var(--fundo);display:flex;align-items:center;justify-content:center;z-index:2000}
 #login form{background:#fff;padding:22px;border-radius:12px;border:1px solid var(--lin);display:grid;gap:10px;width:min(320px,90vw)}
 #login input,#login button{font-size:16px;padding:10px;border-radius:8px;border:1px solid var(--lin)} #login button{background:var(--verde);color:#fff;border:0}
+.rm{border:1px solid var(--lin);background:#fff;color:#a33;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer} .chip[data-volta]{font-size:12px;padding:4px 10px;display:inline-block;margin:2px}
 .sw{display:inline-flex;border:1px solid var(--lin);border-radius:8px;overflow:hidden;font-size:12px;float:right} .sw span{padding:4px 9px;cursor:pointer} .sw span.on{background:var(--verde);color:#fff}
 </style></head><body>
 <div id="login"><form id="fl"><b style="font-size:18px">🔒 Painel COA</b><input id="senha" type="password" placeholder="Senha" autocomplete="current-password"><button>Entrar</button><small id="lerr" style="color:#c62828"></small></form></div>
@@ -68,12 +69,14 @@ function buscar(){ $('sub').textContent='atualizando…'; if(ABA==='colheita') c
 
 // ===================== COLHEITA =====================
 const ORDEM=[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5];
-let CO={linhas:[],tch:{},l2:new Set()}, C_UNI=ls('coa-c-uni',''), C_FR=ls('coa-c-fr',''), C_MODO='th', TCH_MAN=ls('coa-tch-man',{}), TCH_PADRAO=ls('coa-tch-padrao',85);
+let CO={linhas:[],tch:{},l2:new Set()}, C_UNI=ls('coa-c-uni',''), C_FR=ls('coa-c-fr',''), C_MODO='th', TCH_MAN=ls('coa-tch-man',{}), TCH_PADRAO=ls('coa-tch-padrao',85), OCULTAS=new Set(ls('coa-c-ocultas',[]));
+const salvaOcultas=()=>lsS('coa-c-ocultas',[...OCULTAS]);
 function recebeColheita(txt){
   const d=JSON.parse(txt); if(!checa(d)) return;
   CO={linhas:(d.linhas||[]).map(r=>({data:r[0],h:parseInt(String(r[1]).split(':')[0],10),uni:r[2],fr:String(r[3]||'').trim(),eq:String(r[4]||'').trim(),t:num(r[5])||0,cod:r[6],op:String(r[7]||'').toUpperCase().trim(),vel:num(r[8])})).filter(r=>r.fr&&r.eq&&isFinite(r.h)),
       tch:d.tch||{},l2:new Set((d.linhas2||[]).map(String)),aviso:d.tchAviso,tchLido:d.tchLido,lido:d.lido,faltam:d.faltam||[]};
-  $('sub').textContent='Colheita · lido às '+new Date(d.lido||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const hs=new Set(CO.linhas.map(r=>r.h)), ultH=ORDEM.filter(x=>hs.has(x)).pop();
+  $('sub').textContent='Colheita · último dado: '+(ultH==null?'-':String(ultH).padStart(2,'0')+'h')+' · conferido às '+new Date(d.lido||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   desenhaColheita();
 }
 const tchDe=fr=>{ if(TCH_MAN[fr]>0) return {v:+TCH_MAN[fr],f:'manual'}; const x=CO.tch[fr]; if(x&&x.tch>0) return {v:x.tch,f:x.fonte,faz:x.faz}; return {v:+TCH_PADRAO,f:'padrão'}; };
@@ -101,7 +104,7 @@ function grafico(pts,modo){   // pts:[{h,v}] na ordem do dia agrícola
 }
 function desenhaColheita(){
   const L0=CO.linhas, unis=[...new Set(L0.map(r=>r.uni).filter(Boolean))].sort();
-  const base=L0.filter(r=>!C_UNI||r.uni===C_UNI), frentes=[...new Set(base.map(r=>r.fr))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+  const base=L0.filter(r=>(!C_UNI||r.uni===C_UNI)&&!OCULTAS.has(r.fr)), frentes=[...new Set(base.map(r=>r.fr))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
   if(C_FR&&!frentes.includes(C_FR)) C_FR='';
   const sel=base.filter(r=>!C_FR||r.fr===C_FR), EH=calcula(sel);
   const ton=EH.reduce((a,o)=>a+o.ton,0), cor=EH.reduce((a,o)=>a+o.cor,0), vt=EH.reduce((a,o)=>a+o.vel*o.cor,0), ha=EH.reduce((a,o)=>a+o.ha,0);
@@ -123,8 +126,9 @@ function desenhaColheita(){
   if(!C_FR){
     const fr={}; calcula(base).forEach(o=>{ const f=fr[o.fr]||(fr[o.fr]={fr:o.fr,uni:o.uni,ton:0,cor:0,vt:0,eq:new Set(),hs:new Set()}); f.ton+=o.ton; f.cor+=o.cor; f.vt+=o.vel*o.cor; if(o.cor>0){ f.eq.add(o.eq); f.hs.add(o.h); } });
     const L=Object.values(fr).sort((a,b)=>b.ton-a.ton);
-    h+='<div class="painel"><h3>Por frente <small>toque na linha para abrir · TCH: digite para corrigir (fica salvo neste aparelho)</small></h3><table><tr><th>Frente</th><th class="n esc">Colhed.</th><th class="n">Horas corte</th><th class="n esc">Vel. km/h</th><th class="n">TCH</th><th class="n">Cana (t)</th><th class="n">t/h</th></tr>'+
-      L.map(f=>{ const t=tchDe(f.fr); return '<tr class="cl" data-fr="'+esc(f.fr)+'"><td><b>'+esc(f.fr)+'</b> <small class="nota esc">'+esc(f.uni||'')+'</small></td><td class="n esc">'+f.eq.size+'</td><td class="n">'+fHM(f.cor)+'</td><td class="n esc">'+fmt(f.cor?f.vt/f.cor:NaN,2)+'</td><td class="n"><input type="number" step="0.1" data-tch="'+esc(f.fr)+'" value="'+(TCH_MAN[f.fr]||'')+'" placeholder="'+fmt(t.v,1)+'" title="'+t.f+'"> <span class="tag esc '+(t.f==='manual'?'m':t.f==='padrão'?'p':'')+'">'+t.f+'</span></td><td class="n"><b>'+fmt(f.ton)+'</b></td><td class="n">'+fmt(f.hs.size?f.ton/f.hs.size:NaN)+'</td></tr>'; }).join('')+'</table></div>';
+    h+='<div class="painel"><h3>Por frente <small>toque na linha para abrir · TCH: digite para corrigir (fica salvo neste aparelho)</small></h3><table><tr><th>Frente</th><th class="n esc">Colhed.</th><th class="n">Horas corte</th><th class="n esc">Vel. km/h</th><th class="n">TCH</th><th class="n">Cana (t)</th><th class="n">t/h</th><th></th></tr>'+
+      L.map(f=>{ const t=tchDe(f.fr); return '<tr class="cl" data-fr="'+esc(f.fr)+'"><td><b>'+esc(f.fr)+'</b> <small class="nota esc">'+esc(f.uni||'')+'</small></td><td class="n esc">'+f.eq.size+'</td><td class="n">'+fHM(f.cor)+'</td><td class="n esc">'+fmt(f.cor?f.vt/f.cor:NaN,2)+'</td><td class="n"><input type="number" step="0.1" data-tch="'+esc(f.fr)+'" value="'+(TCH_MAN[f.fr]||'')+'" placeholder="'+fmt(t.v,1)+'" title="'+t.f+'"> <span class="tag esc '+(t.f==='manual'?'m':t.f==='padrão'?'p':'')+'">'+t.f+'</span></td><td class="n"><b>'+fmt(f.ton)+'</b></td><td class="n">'+fmt(f.hs.size?f.ton/f.hs.size:NaN)+'</td><td><button class="rm" data-rm="'+esc(f.fr)+'" title="Remover esta frente do painel">✕</button></td></tr>'; }).join('')+'</table>'+
+      (OCULTAS.size?'<div class="nota" style="margin-top:8px">Removidas ('+OCULTAS.size+'): '+[...OCULTAS].map(x=>'<span class="chip" data-volta="'+esc(x)+'" title="Tocar para voltar">↺ '+esc(x)+'</span>').join(' ')+'</div>':'')+'</div>';
   } else {
     const eq={}; EH.forEach(o=>{ const e=eq[o.eq]||(eq[o.eq]={eq:o.eq,ton:0,cor:0,vt:0,tot:0,esp:o.esp}); e.ton+=o.ton; e.cor+=o.cor; e.vt+=o.vel*o.cor; e.tot+=o.tot; });
     h+='<div class="painel"><h3>Colhedoras da '+esc(C_FR)+' <small>'+(tchSel&&tchSel.f!=='manual'?'TCH '+fmt(tchSel.v,1)+' ('+tchSel.f+')':'')+'</small></h3><table><tr><th>Colhedora</th><th class="n">Linhas</th><th class="n">Horas corte</th><th class="n">% corte</th><th class="n">Vel. km/h</th><th class="n">Cana (t)</th></tr>'+
@@ -136,7 +140,9 @@ function desenhaColheita(){
   document.querySelectorAll('[data-u]').forEach(c=>c.onclick=()=>{ C_UNI=c.dataset.u; lsS('coa-c-uni',C_UNI); C_FR=''; desenhaColheita(); });
   $('sel-fr').onchange=e=>{ C_FR=e.target.value; lsS('coa-c-fr',C_FR); desenhaColheita(); };
   document.querySelectorAll('[data-m]').forEach(c=>c.onclick=()=>{ C_MODO=c.dataset.m; desenhaColheita(); });
-  document.querySelectorAll('tr[data-fr]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName==='INPUT') return; C_FR=tr.dataset.fr; lsS('coa-c-fr',C_FR); desenhaColheita(); scrollTo({top:0,behavior:'smooth'}); });
+  document.querySelectorAll('tr[data-fr]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return; C_FR=tr.dataset.fr; lsS('coa-c-fr',C_FR); desenhaColheita(); scrollTo({top:0,behavior:'smooth'}); });
+  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); OCULTAS.add(b.dataset.rm); salvaOcultas(); desenhaColheita(); });
+  document.querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{ OCULTAS.delete(b.dataset.volta); salvaOcultas(); desenhaColheita(); });
   document.querySelectorAll('[data-tch]').forEach(i=>i.onchange=()=>{ const v=num(i.value); if(v>0) TCH_MAN[i.dataset.tch]=v; else delete TCH_MAN[i.dataset.tch]; lsS('coa-tch-man',TCH_MAN); desenhaColheita(); });
   $('tch-pad').onchange=e=>{ TCH_PADRAO=num(e.target.value)||85; lsS('coa-tch-padrao',TCH_PADRAO); desenhaColheita(); };
 }
