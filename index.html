@@ -248,8 +248,8 @@ function icoCam(cor,ang){ const t=svgCamTopo(2,cor), esc0=.8, S=Math.round(t.L*e
 function icoLista(cor){ const t=svgCamTopo(2,cor); return '<span class="ic-cam"><span style="transform:translate(-50%,-50%) rotate(90deg) scale(.55)">'+t.svg+'</span></span>'; }
 
 const mapa=L.map('mapa',{zoomControl:true}).setView([-20.9,-49.8],10);
-const FUNDOS={ ruas:L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap © CARTO'}),
-  sat:L.layerGroup([L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagens © Esri'}),L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'})]) };
+const FUNDOS={ ruas:L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
+  sat:L.layerGroup([L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagens © Esri'}),L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:19}),L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',{maxZoom:19})]) };
 let FUNDO=ls('coa-fundo','ruas'); if(!FUNDOS[FUNDO]) FUNDO='ruas';
 function aplicarFundo(){ Object.entries(FUNDOS).forEach(([k,l])=>{ if(k===FUNDO){ if(!mapa.hasLayer(l)) l.addTo(mapa); } else if(mapa.hasLayer(l)) mapa.removeLayer(l); });
   document.querySelectorAll('#bt-fundo a').forEach(a=>{ const on=a.dataset.k===FUNDO; a.style.background=on?'#173d2a':'#fff'; a.style.color=on?'#fff':'#333'; }); }
