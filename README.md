@@ -1,0 +1,257 @@
+[index.html](https://github.com/user-attachments/files/35459821/index.html)
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--verde:#1b3d2b;--fundo:#f3f1ec;--lin:#e3ded3;--ink:#1f2a24;--ink2:#5b6b62;--azul:#2a78d6}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--fundo);color:var(--ink)}
+header{background:var(--verde);color:#fff;padding:9px 14px 0;position:sticky;top:0;z-index:1000}
+.hl{display:flex;align-items:center;gap:10px} header h1{font-size:17px;margin:0;flex:1} header small{display:block;font-size:11.5px;color:#b9d2c3;font-weight:400}
+header button{background:#fff2;border:1px solid #fff5;color:#fff;border-radius:8px;padding:7px 11px;font-size:14px}
+.abas{display:flex;gap:2px;margin-top:8px} .aba{padding:8px 14px;font-size:14px;color:#cfe0d6;border-radius:8px 8px 0 0;cursor:pointer}
+.aba.on{background:var(--fundo);color:var(--verde);font-weight:700}
+main{padding:10px;display:grid;gap:10px;max-width:1400px;margin:0 auto}
+.filtros{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--lin);background:#fff;border-radius:20px;padding:7px 13px;font-size:13px;cursor:pointer;user-select:none}
+.chip.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+.filtros input,.filtros select{flex:1;min-width:150px;border:1px solid var(--lin);border-radius:20px;padding:8px 13px;font-size:14px;background:#fff}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.kpi{background:#fff;border:1px solid var(--lin);border-radius:10px;padding:9px 12px;border-left:5px solid var(--c,#1b3d2b)}
+.kpi.clic{cursor:pointer} .kpi.on{outline:2px solid var(--c)} .kpi b{display:block;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.3px}
+.kpi .v{font-size:25px;font-weight:700;font-variant-numeric:tabular-nums} .kpi small{font-size:11.5px;color:var(--ink2)}
+.painel{background:#fff;border:1px solid var(--lin);border-radius:10px;padding:10px 12px;overflow:auto}
+.painel h3{margin:0 0 6px;font-size:14px} .painel h3 small{font-weight:400;color:var(--ink2);font-size:12px}
+table{border-collapse:collapse;width:100%;font-size:13px} th{background:#f4f2ec;text-align:left;padding:7px 8px;font-size:11.5px;color:var(--ink2);text-transform:uppercase;white-space:nowrap}
+td{padding:7px 8px;border-top:1px solid #eee;white-space:nowrap} td.n,th.n{text-align:right;font-variant-numeric:tabular-nums} tr.cl{cursor:pointer} tr.cl:hover td{background:#f7f6f2}
+td input{width:64px;font-size:13px;padding:3px 5px;border:1px solid var(--lin);border-radius:6px;text-align:right}
+.tag{font-size:11px;border-radius:10px;padding:1px 7px;background:#eef4ee;color:#1b5e20} .tag.m{background:#fff3e0;color:#b26a00} .tag.p{background:#eee;color:#555}
+.corpo{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px}
+@media(max-width:820px){.esc{display:none} .corpo{grid-template-columns:1fr} #mapa{height:300px!important} .kpi .v{font-size:21px} td,th{padding:6px 5px}}
+#mapa{height:calc(100vh - 290px);min-height:320px;border-radius:10px;border:1px solid var(--lin)}
+.lista{background:#fff;border:1px solid var(--lin);border-radius:10px;overflow:auto;max-height:calc(100vh - 290px);min-height:200px}
+.it{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid #eee;align-items:center;cursor:pointer}
+.bola{width:12px;height:12px;border-radius:50%;flex:none} .it .nm{font-weight:600;font-size:14px} .it small{color:var(--ink2);font-size:12px;display:block}
+.it .dir{margin-left:auto;text-align:right;font-size:12px;color:var(--ink2);white-space:nowrap}
+.aviso{background:#fff3e0;border:1px solid #f4c27a;border-radius:8px;padding:8px 12px;font-size:13px} .nota{font-size:12px;color:var(--ink2)}
+#login{position:fixed;inset:0;background:var(--fundo);display:flex;align-items:center;justify-content:center;z-index:2000}
+#login form{background:#fff;padding:22px;border-radius:12px;border:1px solid var(--lin);display:grid;gap:10px;width:min(320px,90vw)}
+#login input,#login button{font-size:16px;padding:10px;border-radius:8px;border:1px solid var(--lin)} #login button{background:var(--verde);color:#fff;border:0}
+.rm{border:1px solid var(--lin);background:#fff;color:#a33;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer} .chip[data-volta]{font-size:12px;padding:4px 10px;display:inline-block;margin:2px}
+.topo{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px}
+.kpi.gauge{grid-column:span 2;display:flex;align-items:center;gap:12px;padding:6px 12px} .kpi.gauge svg{flex:none} .kpi.gauge .gi{min-width:0}
+.dash2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+@media(max-width:820px){.dash2{grid-template-columns:1fr} .kpi.gauge{grid-column:1/-1}}
+.rk{display:grid;grid-template-columns:minmax(70px,auto) 1fr auto;gap:6px 8px;align-items:center;font-size:12.5px}
+.rk .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer} .rk .tr{background:#f1efe9;border-radius:5px;height:18px;position:relative;overflow:hidden}
+.rk .br{height:100%;border-radius:5px} .rk .vl{font-variant-numeric:tabular-nums;font-weight:700;text-align:right;white-space:nowrap}
+.rk .fx{position:absolute;top:0;bottom:0;background:#ffffff40;border-left:1px dashed #1baf7a;border-right:1px dashed #1baf7a}
+.leg{font-size:11.5px;color:var(--ink2);display:flex;gap:12px;flex-wrap:wrap;margin:-2px 0 4px} .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sw{display:inline-flex;border:1px solid var(--lin);border-radius:8px;overflow:hidden;font-size:12px;float:right} .sw span{padding:4px 9px;cursor:pointer} .sw span.on{background:var(--verde);color:#fff}
+</style></head><body>
+<div id="login"><form id="fl"><b style="font-size:18px">🔒 Painel COA</b><input id="senha" type="password" placeholder="Senha" autocomplete="current-password"><button>Entrar</button><small id="lerr" style="color:#c62828"></small></form></div>
+<header><div class="hl"><h1 id="tit">Painel COA<small id="sub">carregando…</small></h1><button id="atu" title="Atualizar">↻</button></div>
+<div class="abas"><span class="aba on" data-a="colheita">🌾 Colheita</span><span class="aba" data-a="caminhoes">🚛 Caminhões</span></div></header>
+<main id="m-colheita"></main>
+<main id="m-caminhoes" style="display:none">
+  <div id="msg2"></div><div class="filtros" id="unid2"></div><div class="kpis" id="kpis2"></div>
+  <div class="filtros"><input id="busca" placeholder="Buscar frota, placa ou transportadora"></div>
+  <div class="corpo"><div id="mapa"></div><div class="lista" id="lista"></div></div>
+</main>
+<script>
+const $=id=>document.getElementById(id), esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=(v,d=0)=>v==null||!isFinite(v)?'-':v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fHM=h=>{ if(!isFinite(h)) return '-'; const m=Math.round(h*60); return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'); };
+const num=s=>{ const t=String(s==null?'':s).trim(); if(!t) return NaN; return parseFloat(/,\d+$/.test(t)||/\.\d{3},/.test(t)?t.replace(/\./g,'').replace(',','.'):t.replace(',','.')); };
+const ls=(k,d)=>{ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, lsS=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+let SENHA=ls('coa-senha',''), ABA=ls('coa-aba','colheita');
+const API='https://script.google.com/macros/s/AKfycbwrcvH4yJ9Spa6X4aXv8MnGMoYMX5VHtNm_hl7wOVZ5Qcg_55IhhXSYHqJu9Sc93k01xA/exec';
+function chamar(fn,ok){
+  if(window.__TESTE){ ok(window.__TESTE[fn]||'{}'); return; }
+  if(typeof google!=='undefined'&&google.script){ google.script.run.withSuccessHandler(ok).withFailureHandler(e=>{ $('sub').textContent='⚠ erro ao ler: '+(e.message||e); })[fn](SENHA); return; }
+  fetch(API,{method:'POST',body:JSON.stringify({acao:fn==='dadosCaminhoes'?'caminhoes':'colheita',senha:SENHA})})
+    .then(r=>r.text()).then(t=>{ let d; try{ d=JSON.parse(t); }catch(e){ throw new Error('resposta inesperada do Google'); } if(d.erro==='falha') throw new Error(d.msg); ok(t); })
+    .catch(e=>{ $('sub').textContent='⚠ erro ao ler: '+(e.message||e); });
+}
+function checa(d){ if(d.erro==='senha'){ $('login').style.display='flex'; $('lerr').textContent=SENHA?'Senha incorreta.':''; return false; } $('login').style.display='none'; lsS('coa-senha',SENHA); return true; }
+function trocaAba(a){ ABA=a; lsS('coa-aba',a); document.querySelectorAll('.aba').forEach(x=>x.classList.toggle('on',x.dataset.a===a)); $('m-colheita').style.display=a==='colheita'?'':'none'; $('m-caminhoes').style.display=a==='caminhoes'?'':'none'; buscar(); if(a==='caminhoes') setTimeout(()=>mapa.invalidateSize(),100); }
+function buscar(){ $('sub').textContent='atualizando…'; if(ABA==='colheita') chamar('dadosColheita',recebeColheita); else chamar('dadosCaminhoes',recebeCaminhoes); }
+
+// ===================== COLHEITA =====================
+const ORDEM=[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5];
+let CO={linhas:[],tch:{},l2:new Set()}, C_UNI=ls('coa-c-uni',''), C_FR=ls('coa-c-fr',''), C_MODO='th', TCH_MAN=ls('coa-tch-man',{}), TCH_PADRAO=ls('coa-tch-padrao',85), OCULTAS=new Set(ls('coa-c-ocultas',[])), VEL_FX=ls('coa-vel-fx',[5,7]);
+const salvaOcultas=()=>lsS('coa-c-ocultas',[...OCULTAS]);
+function recebeColheita(txt){
+  const d=JSON.parse(txt); if(!checa(d)) return;
+  CO={linhas:(d.linhas||[]).map(r=>({data:r[0],h:parseInt(String(r[1]).split(':')[0],10),uni:r[2],fr:String(r[3]||'').trim(),eq:String(r[4]||'').trim(),t:num(r[5])||0,cod:r[6],op:String(r[7]||'').toUpperCase().trim(),vel:num(r[8])})).filter(r=>r.fr&&r.eq&&isFinite(r.h)),
+      tch:d.tch||{},l2:new Set((d.linhas2||[]).map(String)),aviso:d.tchAviso,tchLido:d.tchLido,lido:d.lido,faltam:d.faltam||[]};
+  const hs=new Set(CO.linhas.map(r=>r.h)), ultH=ORDEM.filter(x=>hs.has(x)).pop();
+  const pv=d.previa&&d.previa.linhas?d.previa:null; CO.previa=pv;
+  if(pv) pv.linhas.forEach(r=>{ const [h,u,fr,eq,tot,cor,vt]=r; if(!fr||!eq) return; const base={h:+h,uni:u,fr:String(fr).trim(),eq:String(eq).trim(),prev:true};
+    if(cor>0) CO.linhas.push(Object.assign({},base,{t:+cor,op:'CORTE DE CANA',vel:vt/cor})); if(tot-cor>0) CO.linhas.push(Object.assign({},base,{t:tot-cor,op:'OUTRO',vel:NaN})); });
+  $('sub').textContent='Colheita · oficial até '+(ultH==null?'-':String(ultH).padStart(2,'0')+'h')+(pv&&pv.linhas.length?' · prévia (Monit) até '+pv.ate:'')+' · conferido às '+new Date(d.lido||Date.now()).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  desenhaColheita();
+}
+const tchDe=fr=>{ if(TCH_MAN[fr]>0) return {v:+TCH_MAN[fr],f:'manual'}; const x=CO.tch[fr]; if(x&&x.tch>0) return {v:x.tch,f:x.fonte,faz:x.faz}; return {v:+TCH_PADRAO,f:'padrão'}; };
+function calcula(linhas){
+  // por colhedora e hora — mesma conta do Painel de Colheita: (corte ÷ tempo) × velocidade × TCH × espaçamento ÷ 10
+  const m={}; linhas.forEach(r=>{ const k=r.eq+'|'+r.h; const o=m[k]||(m[k]={eq:r.eq,h:r.h,fr:r.fr,uni:r.uni,tot:0,cor:0,vt:0,prev:!!r.prev}); o.tot+=r.t; if(r.op==='CORTE DE CANA'){ o.cor+=r.t; if(isFinite(r.vel)) o.vt+=r.vel*r.t; } });
+  return Object.values(m).map(o=>{ const esp=CO.l2.has(o.eq)?3:1.5, vel=o.cor?o.vt/o.cor:0, tch=tchDe(o.fr).v; const ton=o.tot?(o.cor/o.tot)*vel*tch*esp/10:0; return Object.assign(o,{esp,vel,tch,ton,real:o.prev?o.cor*vel*tch*esp/10:ton,ha:o.prev?o.cor*vel*esp/10:(o.tot?(o.cor/o.tot)*vel*esp/10:0)}); });
+  // prévia (hora em andamento): ton = ritmo t/h; real = o que já foi colhido até agora
+}
+function grafico(pts,modo){   // pts:[{h,v}] na ordem do dia agrícola
+  if(!pts.length) return '<div class="nota">Sem horas com corte.</div>';
+  const W=Math.max(330,Math.min(1340,innerWidth-46)),H=240,x0=40,y0=22,ch=185,w=W-x0-10;
+  const i0=ORDEM.indexOf(pts[0].h), i1=ORDEM.indexOf(pts[pts.length-1].h), HS=ORDEM.slice(Math.max(0,i0),i1+1);
+  const vals=pts.map(p=>p.v), mx=Math.max(10,...vals)*1.15, n=HS.length, X=i=>x0+w*(i+.5)/n, Y=v=>y0+ch-ch*v/mx;
+  const passo=[10,20,25,50,100,200,250,500,1000,2000,5000].find(p=>mx/p<=6)||10000;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px">';
+  for(let t=0;t<=mx;t+=passo){ s+='<line x1="'+x0+'" x2="'+(W-14)+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="#e1e0d9"/><text x="'+(x0-6)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="11" fill="#5b6b62">'+fmt(t)+'</text>'; }
+  HS.forEach((h,i)=>{ if(n>14&&W<600&&i%2) return; s+='<text x="'+X(i)+'" y="'+(y0+ch+16)+'" text-anchor="middle" font-size="11" fill="#5b6b62">'+String(h).padStart(2,'0')+'</text>'; });
+  const P=pts.map(p=>[X(HS.indexOf(p.h)),Y(p.v),p]);
+  s+='<path d="M'+P.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+' L'+P[P.length-1][0].toFixed(1)+' '+(y0+ch)+' L'+P[0][0].toFixed(1)+' '+(y0+ch)+'Z" fill="#2a78d6" opacity=".08"/>';
+  const Pof=P.filter(q=>!q[2].prev), Ppv=P.filter(q=>q[2].prev);
+  if(Pof.length>1) s+='<polyline points="'+Pof.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#2a78d6" stroke-width="2.5" stroke-linejoin="round"/>';
+  if(Ppv.length){ const lig=(Pof.length?[Pof[Pof.length-1]]:[]).concat(Ppv); if(lig.length>1) s+='<polyline points="'+lig.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'" fill="none" stroke="#2a78d6" stroke-width="2" stroke-dasharray="5 4"/>'; }
+  const imax=vals.indexOf(Math.max(...vals));
+  P.forEach(([x,y,p],i)=>{ s+='<g><circle cx="'+x+'" cy="'+y+'" r="5" fill="'+(p.prev?'#fff':'#2a78d6')+'" stroke="'+(p.prev?'#2a78d6':'#fff')+'" stroke-width="2"/><circle cx="'+x+'" cy="'+y+'" r="16" fill="transparent"><title>'+String(p.h).padStart(2,'0')+'h · '+fmt(p.v)+(modo==='ac'?' t acumuladas':' t/h')+(p.n?' · '+p.n+' colhedoras':'')+(p.prev?' · PRÉVIA pelo Monit (hora em andamento)':'')+'</title></circle>';
+    if(P.length<=(W<600?8:16)||i===imax||i===P.length-1) s+='<text x="'+x+'" y="'+(y-10)+'" text-anchor="middle" font-size="11.5" font-weight="600" fill="#0b0b0b">'+fmt(p.v)+(p.prev?' (prévia)':'')+'</text>'; s+='</g>'; });
+  return s+'</svg>';
+}
+const velCor=v=>!isFinite(v)||v<=0?'#c9c5bb':v<VEL_FX[0]-1||v>VEL_FX[1]+1?'#e34948':v<VEL_FX[0]||v>VEL_FX[1]?'#eda100':'#1baf7a';
+function velocimetro(v){   // semicirculo 0..VMAX km/h, faixa ideal em verde
+  const VMAX=Math.max(10,Math.ceil((VEL_FX[1]+2)/2)*2), cx=105,cy=100,r=80, W=210,H=128;
+  const P=(x,rr)=>{ const a=Math.PI*(1-Math.min(Math.max(x,0),VMAX)/VMAX); return [cx+rr*Math.cos(a),cy-rr*Math.sin(a)]; };
+  const arco=(a,b,c)=>{ const p=P(a,r),q=P(b,r); return '<path d="M'+p[0].toFixed(1)+' '+p[1].toFixed(1)+' A'+r+' '+r+' 0 0 1 '+q[0].toFixed(1)+' '+q[1].toFixed(1)+'" stroke="'+c+'" stroke-width="16" fill="none"/>'; };
+  const [a1,a2]=VEL_FX; let s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'">';
+  s+=arco(0,Math.max(a1-1,0),'#f6c4c3')+arco(Math.max(a1-1,0),a1,'#fbe3ad')+arco(a1,a2,'#bfe9d6')+arco(a2,Math.min(a2+1,VMAX),'#fbe3ad')+arco(Math.min(a2+1,VMAX),VMAX,'#f6c4c3');
+  for(let t=0;t<=VMAX;t+=VMAX>12?2:1){ const p=P(t,r-12),q=P(t,r-6),l=P(t,r-22); s+='<line x1="'+p[0].toFixed(1)+'" y1="'+p[1].toFixed(1)+'" x2="'+q[0].toFixed(1)+'" y2="'+q[1].toFixed(1)+'" stroke="#8a948e" stroke-width="1.2"/>'+(t%2===0?'<text x="'+l[0].toFixed(1)+'" y="'+(l[1]+3.5).toFixed(1)+'" text-anchor="middle" font-size="9.5" fill="#5b6b62">'+t+'</text>':''); }
+  if(isFinite(v)&&v>0){ const p=P(v,r-26); s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0].toFixed(1)+'" y2="'+p[1].toFixed(1)+'" stroke="#1f2a24" stroke-width="3.5" stroke-linecap="round"/>'; }
+  s+='<circle cx="'+cx+'" cy="'+cy+'" r="7" fill="#1f2a24"/><text x="'+cx+'" y="'+(cy+24)+'" text-anchor="middle" font-size="19" font-weight="700" fill="'+velCor(v)+'">'+fmt(v,2)+' km/h</text>';
+  return s+'</svg>';
+}
+function graficoHora(pts){   // barras = t/h ; linha = acumulado (eixo da direita)
+  if(!pts.length) return '<div class="nota">Sem horas com corte.</div>';
+  const W=Math.max(330,Math.min(1340,innerWidth-46)),H=250,x0=40,x1=W-46,y0=24,ch=190,w=x1-x0;
+  const i0=ORDEM.indexOf(pts[0].h), i1=ORDEM.indexOf(pts[pts.length-1].h), HS=ORDEM.slice(Math.max(0,i0),i1+1), n=HS.length;
+  const mx=Math.max(10,...pts.map(p=>p.v))*1.2; let ac=0; const acs=pts.map(p=>ac+=p.r), mxa=Math.max(10,ac)*1.1;
+  const X=i=>x0+w*(i+.5)/n, Y=v=>y0+ch-ch*v/mx, Ya=v=>y0+ch-ch*v/mxa, bw=Math.min(46,w/n*.6);
+  const passo=[5,10,20,25,50,100,200,250,500,1000].find(p=>mx/p<=5)||2000, pa=[10,20,50,100,200,250,500,1000,2000,5000,10000].find(p=>mxa/p<=5)||20000;
+  let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px">';
+  for(let t=0;t<=mx;t+=passo) s+='<line x1="'+x0+'" x2="'+x1+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="#eceae3"/><text x="'+(x0-6)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="11" fill="#2a78d6">'+fmt(t)+'</text>';
+  for(let t=0;t<=mxa;t+=pa) s+='<text x="'+(x1+6)+'" y="'+(Ya(t)+4)+'" font-size="11" fill="#1b3d2b">'+fmt(t)+'</text>';
+  HS.forEach((h,i)=>{ if(n>14&&W<600&&i%2) return; s+='<text x="'+X(i)+'" y="'+(y0+ch+16)+'" text-anchor="middle" font-size="11" fill="#5b6b62">'+String(h).padStart(2,'0')+'h</text>'; });
+  const media=pts.filter(p=>!p.prev), md=media.length?media.reduce((a,p)=>a+p.v,0)/media.length:NaN;
+  pts.forEach((p,k)=>{ const i=HS.indexOf(p.h), x=X(i)-bw/2, y=Y(p.v);
+    s+='<g><rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(y0+ch-y).toFixed(1)+'" rx="3" fill="'+(p.prev?'#2a78d633':(isFinite(md)&&p.v<md*.7?'#e3494899':'#2a78d6'))+'"'+(p.prev?' stroke="#2a78d6" stroke-dasharray="4 3"':'')+'><title>'+String(p.h).padStart(2,'0')+'h · '+fmt(p.v)+' t/h · acumulado '+fmt(acs[k])+' t'+(p.n?' · '+p.n+' colhedoras':'')+(p.prev?' · PRÉVIA (Monit)':'')+'</title></rect>';
+    if(n<=(W<600?10:20)) s+='<text x="'+X(i)+'" y="'+(y-5)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#1f2a24">'+fmt(p.v)+'</text>'; s+='</g>'; });
+  if(isFinite(md)) s+='<line x1="'+x0+'" x2="'+x1+'" y1="'+Y(md)+'" y2="'+Y(md)+'" stroke="#2a78d6" stroke-dasharray="6 4" opacity=".6"/><text x="'+(x1-4)+'" y="'+(Y(md)+13)+'" text-anchor="end" font-size="10.5" fill="#2a78d6">média '+fmt(md)+' t/h</text>';
+  const L=pts.map((p,k)=>[X(HS.indexOf(p.h)),Ya(acs[k])]);
+  if(L.length>1) s+='<polyline points="'+L.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'" fill="none" stroke="#1b3d2b" stroke-width="2.5"/>';
+  L.forEach((q,k)=>{ s+='<circle cx="'+q[0]+'" cy="'+q[1]+'" r="3.5" fill="#1b3d2b"/>'; });
+  const u=L[L.length-1]; s+='<text x="'+(u[0]-6)+'" y="'+(u[1]-8)+'" text-anchor="end" font-size="11.5" font-weight="700" fill="#1b3d2b">'+fmt(acs[acs.length-1])+' t</text>';
+  return s+'</svg>';
+}
+function ranking(it,campo,fmtv,cor,attr,faixa){   // barras horizontais
+  if(!it.length) return '<div class="nota">Sem dados.</div>';
+  const mx=Math.max(...it.map(o=>o[campo]).filter(isFinite),faixa?faixa[1]+1:0)||1;
+  return '<div class="rk">'+it.map(o=>{ const v=o[campo], pc=isFinite(v)?Math.max(0,v)/mx*100:0;
+    return '<div class="nm" '+(attr?attr+'="'+esc(o.nome)+'"':'')+' title="'+esc(o.nome)+'">'+esc(o.nome)+'</div><div class="tr"><div class="br" style="width:'+pc.toFixed(1)+'%;background:'+cor(o)+'"></div>'+(faixa?'<div class="fx" style="left:'+(faixa[0]/mx*100)+'%;width:'+((faixa[1]-faixa[0])/mx*100)+'%"></div>':'')+'</div><div class="vl">'+fmtv(v)+'</div>'; }).join('')+'</div>';
+}
+function desenhaColheita(){
+  const L0=CO.linhas, unis=[...new Set(L0.map(r=>r.uni).filter(Boolean))].sort();
+  const base=L0.filter(r=>(!C_UNI||r.uni===C_UNI)&&!OCULTAS.has(r.fr)), frentes=[...new Set(base.map(r=>r.fr))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
+  if(C_FR&&!frentes.includes(C_FR)) C_FR='';
+  const sel=base.filter(r=>!C_FR||r.fr===C_FR), EH=calcula(sel);
+  const ton=EH.reduce((a,o)=>a+o.real,0), tonOf=EH.filter(o=>!o.prev).reduce((a,o)=>a+o.ton,0), cor=EH.reduce((a,o)=>a+o.cor,0), vt=EH.reduce((a,o)=>a+o.vel*o.cor,0), ha=EH.reduce((a,o)=>a+o.ha,0);
+  const porH={}; EH.forEach(o=>{ const p=porH[o.h]||(porH[o.h]={h:o.h,v:0,r:0,n:0,prev:false}); p.v+=o.ton; p.r+=o.real; if(o.prev) p.prev=true; if(o.cor>0) p.n++; });
+  const horas=ORDEM.filter(h=>porH[h]&&porH[h].v>0), horasOf=horas.filter(h=>!porH[h].prev); let ac=0; const pts=horas.map(h=>({h,v:C_MODO==='ac'?(ac+=porH[h].r):porH[h].v,n:porH[h].n,prev:porH[h].prev}));
+  const nCol=new Set(EH.filter(o=>o.cor>0).map(o=>o.eq)).size, tchSel=C_FR?tchDe(C_FR):null;
+  let h='';
+  if(CO.faltam.length) h+='<div class="aviso">⚠ Faltam colunas na planilha "RPA - Variaveis Operacionais" — confira o cabeçalho.</div>';
+  h+='<div class="filtros">'+[''].concat(unis).map(u=>'<span class="chip'+(u===C_UNI?' on':'')+'" data-u="'+esc(u)+'">'+(u||'Todas')+'</span>').join('')+
+     '<select id="sel-fr"><option value="">Todas as frentes ('+frentes.length+')</option>'+frentes.map(f=>'<option'+(f===C_FR?' selected':'')+'>'+esc(f)+'</option>').join('')+'</select></div>';
+  const velM=cor?vt/cor:NaN;
+  h+='<div class="topo">'+
+    '<div class="kpi" style="--c:#2a78d6"><b>Cana colocada (estimada)</b><div class="v">'+fmt(ton)+' t</div><small>'+fmt(ha,1)+' ha cortados</small></div>'+
+    '<div class="kpi" style="--c:#1baf7a"><b>Ritmo médio</b><div class="v">'+fmt(horasOf.length?tonOf/horasOf.length:NaN)+' t/h</div><small>média das '+horasOf.length+' horas fechadas com corte</small></div>'+
+    '<div class="kpi" style="--c:#6250d6"><b>Horas de corte</b><div class="v">'+fHM(cor)+'</div><small>'+nCol+' colhedoras cortando</small></div>'+
+    (tchSel?'<div class="kpi" style="--c:#e34948"><b>TCH usado</b><div class="v">'+fmt(tchSel.v,1)+'</div><small>'+tchSel.f+(tchSel.faz?' · '+esc(tchSel.faz.join(', ')):'')+'</small></div>':'')+
+    '<div class="kpi gauge" style="--c:'+velCor(velM)+'">'+velocimetro(velM)+'<div class="gi"><b>Velocidade de corte</b><small>média ponderada pelo tempo de corte<br>faixa ideal: '+fmt(VEL_FX[0],1)+' a '+fmt(VEL_FX[1],1)+' km/h</small></div></div>'+
+  '</div>';
+  const pts2=horas.map(h=>({h,v:porH[h].v,r:porH[h].r,n:porH[h].n,prev:porH[h].prev}));
+  h+='<div class="painel"><h3>'+(C_FR?esc(C_FR):(C_UNI||'Todas as unidades'))+' — cana colocada por hora</h3><div class="leg"><span><i style="background:#2a78d6"></i>t/h na hora</span><span><i style="background:#e3494899"></i>hora abaixo de 70% da média</span>'+(CO.previa&&CO.previa.linhas&&CO.previa.linhas.length?'<span><i style="background:#2a78d633;border:1px dashed #2a78d6"></i>prévia da hora atual (Monit)</span>':'')+'<span><i style="background:#1b3d2b;height:3px;vertical-align:3px"></i>acumulado (eixo da direita)</span></div>'+graficoHora(pts2)+'</div>';
+  if(!C_FR){
+    const fr={}; calcula(base).forEach(o=>{ const f=fr[o.fr]||(fr[o.fr]={fr:o.fr,uni:o.uni,ton:0,tonOf:0,cor:0,vt:0,eq:new Set(),hs:new Set()}); f.ton+=o.real; f.cor+=o.cor; f.vt+=o.vel*o.cor; if(o.cor>0){ f.eq.add(o.eq); if(!o.prev){ f.hs.add(o.h); f.tonOf+=o.ton; } } });
+    const L=Object.values(fr).sort((a,b)=>b.ton-a.ton);
+    const it=L.map(f=>({nome:f.fr,uni:f.uni,ton:f.ton,vel:f.cor?f.vt/f.cor:NaN})), cu=o=>o.uni==='CEMMA'?'#6250d6':'#2a78d6';
+    h+='<div class="dash2"><div class="painel"><h3>Cana colocada por frente <small>toque no nome para abrir</small></h3>'+(unis.length>1&&!C_UNI?'<div class="leg"><span><i style="background:#2a78d6"></i>COPLASA</span><span><i style="background:#6250d6"></i>CEMMA</span></div>':'')+ranking(it,'ton',v=>fmt(v)+' t',cu,'data-ab')+'</div>'+
+       '<div class="painel"><h3>Velocidade de corte por frente <small>faixa verde = ideal</small></h3>'+ranking(it.slice().sort((a,b)=>(b.vel||0)-(a.vel||0)),'vel',v=>fmt(v,2)+' km/h',o=>velCor(o.vel),'data-ab',VEL_FX)+'</div></div>';
+    h+='<div class="painel"><h3>Por frente <small>toque na linha para abrir · TCH: digite para corrigir (fica salvo neste aparelho)</small></h3><table><tr><th>Frente</th><th class="n esc">Colhed.</th><th class="n">Horas corte</th><th class="n esc">Vel. km/h</th><th class="n">TCH</th><th class="n">Cana (t)</th><th class="n">t/h</th><th></th></tr>'+
+      L.map(f=>{ const t=tchDe(f.fr); return '<tr class="cl" data-fr="'+esc(f.fr)+'"><td><b>'+esc(f.fr)+'</b> <small class="nota esc">'+esc(f.uni||'')+'</small></td><td class="n esc">'+f.eq.size+'</td><td class="n">'+fHM(f.cor)+'</td><td class="n esc">'+fmt(f.cor?f.vt/f.cor:NaN,2)+'</td><td class="n"><input type="number" step="0.1" data-tch="'+esc(f.fr)+'" value="'+(TCH_MAN[f.fr]||'')+'" placeholder="'+fmt(t.v,1)+'" title="'+t.f+'"> <span class="tag esc '+(t.f==='manual'?'m':t.f==='padrão'?'p':'')+'">'+t.f+'</span></td><td class="n"><b>'+fmt(f.ton)+'</b></td><td class="n">'+fmt(f.hs.size?f.tonOf/f.hs.size:NaN)+'</td><td><button class="rm" data-rm="'+esc(f.fr)+'" title="Remover esta frente do painel">✕</button></td></tr>'; }).join('')+'</table>'+
+      (OCULTAS.size?'<div class="nota" style="margin-top:8px">Removidas ('+OCULTAS.size+'): '+[...OCULTAS].map(x=>'<span class="chip" data-volta="'+esc(x)+'" title="Tocar para voltar">↺ '+esc(x)+'</span>').join(' ')+'</div>':'')+'</div>';
+  } else {
+    const eq={}; EH.forEach(o=>{ const e=eq[o.eq]||(eq[o.eq]={eq:o.eq,ton:0,cor:0,vt:0,tot:0,esp:o.esp}); e.ton+=o.real; e.cor+=o.cor; e.vt+=o.vel*o.cor; e.tot+=o.tot; });
+    const it=Object.values(eq).map(e=>({nome:e.eq,ton:e.ton,vel:e.cor?e.vt/e.cor:NaN})).sort((a,b)=>b.ton-a.ton);
+    h+='<div class="dash2"><div class="painel"><h3>Cana colocada por colhedora</h3>'+ranking(it,'ton',v=>fmt(v)+' t',()=>'#2a78d6')+'</div>'+
+       '<div class="painel"><h3>Velocidade por colhedora <small>faixa verde = ideal</small></h3>'+ranking(it.slice().sort((a,b)=>(b.vel||0)-(a.vel||0)),'vel',v=>fmt(v,2)+' km/h',o=>velCor(o.vel),'',VEL_FX)+'</div></div>';
+    h+='<div class="painel"><h3>Colhedoras da '+esc(C_FR)+' <small>'+(tchSel&&tchSel.f!=='manual'?'TCH '+fmt(tchSel.v,1)+' ('+tchSel.f+')':'')+'</small></h3><table><tr><th>Colhedora</th><th class="n">Linhas</th><th class="n">Horas corte</th><th class="n">% corte</th><th class="n">Vel. km/h</th><th class="n">Cana (t)</th></tr>'+
+      Object.values(eq).sort((a,b)=>b.ton-a.ton).map(e=>'<tr><td><b>'+esc(e.eq)+'</b></td><td class="n">'+(e.esp===3?'2':'1')+'</td><td class="n">'+fHM(e.cor)+'</td><td class="n">'+fmt(e.tot?e.cor/e.tot*100:NaN)+'%</td><td class="n">'+fmt(e.cor?e.vt/e.cor:NaN,2)+'</td><td class="n"><b>'+fmt(e.ton)+'</b></td></tr>').join('')+'</table></div>';
+  }
+  h+='<div class="nota">Conta igual ao Painel de Colheita: <b>% do tempo em corte × velocidade × TCH × espaçamento (1,5 m; 3 m na colhedora de 2 linhas) ÷ 10</b>, por colhedora e por hora. TCH: semanal (Detalhado) &gt; TMD pelos talhões onde a frente esteve (GPS) &gt; padrão <input type="number" id="tch-pad" value="'+TCH_PADRAO+'" style="width:56px"> t/ha. Velocidade ideal de <input type="number" step="0.5" id="vfx0" value="'+VEL_FX[0]+'" style="width:52px"> a <input type="number" step="0.5" id="vfx1" value="'+VEL_FX[1]+'" style="width:52px"> km/h (fica salvo neste aparelho). '+
+     (CO.tchLido?'TCH recalculado às '+new Date(CO.tchLido).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'. ':'')+(CO.aviso?esc(CO.aviso):'')+'</div>';
+  $('m-colheita').innerHTML=h;
+  document.querySelectorAll('[data-u]').forEach(c=>c.onclick=()=>{ C_UNI=c.dataset.u; lsS('coa-c-uni',C_UNI); C_FR=''; desenhaColheita(); });
+  $('sel-fr').onchange=e=>{ C_FR=e.target.value; lsS('coa-c-fr',C_FR); desenhaColheita(); };
+  document.querySelectorAll('[data-ab]').forEach(c=>c.onclick=()=>{ C_FR=c.dataset.ab; lsS('coa-c-fr',C_FR); desenhaColheita(); scrollTo({top:0,behavior:'smooth'}); });
+  ['vfx0','vfx1'].forEach((id,k)=>$(id).onchange=e=>{ const v=num(e.target.value); if(v>0){ VEL_FX[k]=v; if(VEL_FX[0]>VEL_FX[1]) VEL_FX.reverse(); lsS('coa-vel-fx',VEL_FX); } desenhaColheita(); });
+  document.querySelectorAll('tr[data-fr]').forEach(tr=>tr.onclick=e=>{ if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return; C_FR=tr.dataset.fr; lsS('coa-c-fr',C_FR); desenhaColheita(); scrollTo({top:0,behavior:'smooth'}); });
+  document.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); OCULTAS.add(b.dataset.rm); salvaOcultas(); desenhaColheita(); });
+  document.querySelectorAll('[data-volta]').forEach(b=>b.onclick=()=>{ OCULTAS.delete(b.dataset.volta); salvaOcultas(); desenhaColheita(); });
+  document.querySelectorAll('[data-tch]').forEach(i=>i.onchange=()=>{ const v=num(i.value); if(v>0) TCH_MAN[i.dataset.tch]=v; else delete TCH_MAN[i.dataset.tch]; lsS('coa-tch-man',TCH_MAN); desenhaColheita(); });
+  $('tch-pad').onchange=e=>{ TCH_PADRAO=num(e.target.value)||85; lsS('coa-tch-padrao',TCH_PADRAO); desenhaColheita(); };
+}
+
+// ===================== CAMINHÕES (Alarcom) =====================
+const COR={andando:'#1e8f4e',parado:'#e0a106',deslig:'#7a828a',semsinal:'#3d4247'};
+const NOME={andando:'Andando',parado:'Parado ligado',deslig:'Desligado',semsinal:'Sem sinal (+30 min)'};
+let DADOS=[], UNI='', ST='';
+const parseDH=s=>{ const m=String(s).match(/(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)(?::(\d+))?/); return m?new Date(+m[3],m[2]-1,+m[1],+m[4],+m[5],+(m[6]||0)).getTime():NaN; };
+const idade=ms=>{ const m=Math.round(ms/6e4); return m<60?m+' min':Math.floor(m/60)+'h'+String(m%60).padStart(2,'0'); };
+const mapa=L.map('mapa').setView([-20.9,-49.8],10); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(mapa);
+const camada=L.layerGroup().addTo(mapa); let enquadrou=false;
+function recebeCaminhoes(txt){
+  const d=JSON.parse(txt); if(!checa(d)) return;
+  const L0=d.linhas||[], cab=L0[0]||[], agora=Date.now();
+  DADOS=L0.slice(1).map(r=>{ const o={}; cab.forEach((c,j)=>o[c]=r[j]); o.ts=parseDH(o.DataHora); o.lat=num(o.Latitude); o.lon=num(o.Longitude); o.vel=num(o.Velocidade)||0;
+    o.st=!isFinite(o.ts)||agora-o.ts>30*6e4?'semsinal':String(o.Ignicao)==='0'?'deslig':o.vel>5?'andando':'parado'; return o; }).filter(o=>o.Frota);
+  $('sub').textContent=DADOS.length+' caminhões · lido às '+new Date(d.lido||agora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  desenhaCaminhoes();
+}
+function desenhaCaminhoes(){
+  const unis=[...new Set(DADOS.map(o=>o.Unidade).filter(Boolean))].sort();
+  $('unid2').innerHTML=[''].concat(unis).map(u=>'<span class="chip'+(u===UNI?' on':'')+'" data-u2="'+esc(u)+'">'+(u||'Todas')+'</span>').join('');
+  document.querySelectorAll('[data-u2]').forEach(c=>c.onclick=()=>{ UNI=c.dataset.u2; enquadrou=false; desenhaCaminhoes(); });
+  const q=$('busca').value.trim().toLowerCase();
+  const base=DADOS.filter(o=>(!UNI||o.Unidade===UNI)&&(!q||[o.Frota,o.Placa,o.Transportadora].join(' ').toLowerCase().includes(q)));
+  const cont={}; base.forEach(o=>cont[o.st]=(cont[o.st]||0)+1);
+  $('kpis2').innerHTML=Object.keys(NOME).map(k=>'<div class="kpi clic'+(ST===k?' on':'')+'" style="--c:'+COR[k]+'" data-s="'+k+'"><b>'+NOME[k]+'</b><div class="v">'+(cont[k]||0)+'</div></div>').join('');
+  document.querySelectorAll('[data-s]').forEach(c=>c.onclick=()=>{ ST=ST===c.dataset.s?'':c.dataset.s; desenhaCaminhoes(); });
+  const ordem=Object.keys(NOME), vis=base.filter(o=>!ST||o.st===ST).sort((a,b)=>ordem.indexOf(a.st)-ordem.indexOf(b.st)||String(a.Frota).localeCompare(String(b.Frota),'pt-BR',{numeric:true}));
+  camada.clearLayers(); const pts=[], mk={};
+  vis.forEach(o=>{ if(!isFinite(o.lat)||!isFinite(o.lon)) return; pts.push([o.lat,o.lon]);
+    mk[o.Frota]=L.circleMarker([o.lat,o.lon],{radius:8,color:'#fff',weight:2,fillColor:COR[o.st],fillOpacity:1}).bindPopup('<b>'+esc(o.Frota)+'</b> · '+esc(o.Placa)+'<br>'+NOME[o.st]+' · '+o.vel+' km/h<br>'+esc(o.Endereco||'')+'<br><small>'+esc(o.DataHora)+'</small>').addTo(camada); });
+  if(!enquadrou&&pts.length){ mapa.fitBounds(pts,{padding:[30,30],maxZoom:13}); enquadrou=true; }
+  $('lista').innerHTML=vis.map(o=>'<div class="it" data-f="'+esc(o.Frota)+'"><span class="bola" style="background:'+COR[o.st]+'"></span><div><div class="nm">'+esc(o.Frota)+' <small style="display:inline">'+esc(o.Placa)+'</small></div><small>'+esc(o.Endereco||o.Transportadora||'')+'</small></div><div class="dir">'+NOME[o.st]+'<br>'+(isFinite(o.ts)?'há '+idade(Date.now()-o.ts):'')+'</div></div>').join('')||'<div class="it">Nenhum caminhão.</div>';
+  document.querySelectorAll('[data-f]').forEach(e=>e.onclick=()=>{ const m=mk[e.dataset.f]; if(m){ mapa.setView(m.getLatLng(),14); m.openPopup(); if(innerWidth<820) $('mapa').scrollIntoView({behavior:'smooth'}); } });
+}
+$('busca').oninput=desenhaCaminhoes;
+let RZ=0; addEventListener('resize',()=>{ clearTimeout(RZ); RZ=setTimeout(()=>{ if(ABA==='colheita'&&CO.linhas.length) desenhaColheita(); },250); });
+
+// ===================== início =====================
+document.querySelectorAll('.aba').forEach(a=>a.onclick=()=>trocaAba(a.dataset.a));
+$('atu').onclick=buscar;
+$('fl').onsubmit=e=>{ e.preventDefault(); SENHA=$('senha').value; buscar(); };
+if(SENHA) trocaAba(ABA);
+setInterval(()=>{ if(SENHA&&$('login').style.display==='none'&&!document.hidden) buscar(); },60000);
+</script></body></html>
